@@ -257,7 +257,7 @@ singleBuild pb@PerformBuild {..} SingleBuild {..} =
     log' t = do
         i <- readTVarIO sbActive
         errs <- readTVarIO sbErrsVar
-        pbLog $ encodeUtf8 $ concat
+        when False $ pbLog $ encodeUtf8 $ concat
             [ t
             , " (pending: "
             , tshow i
@@ -274,6 +274,7 @@ singleBuild pb@PerformBuild {..} SingleBuild {..} =
         withBinaryFile (fpToString fp) WriteMode inner'
 
     configArgs = ($ []) $ execWriter $ do
+        tell' "--allow-newer"
         tell' "--package-db=clear"
         tell' "--package-db=global"
         forM_ (pbDatabase pb) $ \db -> tell' $ "--package-db=" ++ fpToText db
@@ -332,7 +333,6 @@ singleBuild pb@PerformBuild {..} SingleBuild {..} =
                 args = "haddock"
                      : "--hyperlink-source"
                      : "--html"
-                     : "--hoogle"
                      : "--html-location=../$pkg-$version/"
                      : hfsOpts
 
@@ -381,12 +381,15 @@ singleBuild pb@PerformBuild {..} SingleBuild {..} =
     warn t = atomically $ modifyTVar sbWarningsVar (. (t:))
 
     updateErrs exc = do
-        log' $ concat
-            [ display (piName sbPackageInfo)
-            , ": "
-            , tshow exc
-            ]
-        atomically $ modifyTVar sbErrsVar $ insertMap (piName sbPackageInfo) exc'
+        case exc' of
+            DependencyFailed _ -> return ()
+            _ -> do
+                log' $ concat
+                    [ display (piName sbPackageInfo)
+                    , ": "
+                    , tshow exc
+                    ]
+                atomically $ modifyTVar sbErrsVar $ insertMap (piName sbPackageInfo) exc'
       where
         exc' =
             case fromException exc of

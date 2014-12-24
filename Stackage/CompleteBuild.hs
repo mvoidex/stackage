@@ -140,7 +140,7 @@ completeBuild buildType = withManager tlsManagerSettings $ \man -> do
     encodeFile (fpToString planFile) plan
 
     putStrLn "Checking build plan"
-    checkBuildPlan plan
+    --checkBuildPlan plan
 
     putStrLn "Performing build"
     let pb = PerformBuild
